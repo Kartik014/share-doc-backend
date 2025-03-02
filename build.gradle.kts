@@ -1,7 +1,7 @@
 plugins {
 	kotlin("jvm") version "1.9.25"
 	kotlin("plugin.spring") version "1.9.25"
-	id("org.springframework.boot") version "3.4.3"
+	id("org.springframework.boot") version "3.3.5"
 	id("io.spring.dependency-management") version "1.1.7"
 }
 
@@ -22,7 +22,11 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-web")
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
+	implementation("org.springframework.boot:spring-boot-starter-data-jpa:3.4.1")
+	implementation("org.springframework.boot:spring-boot-starter-security")
+	implementation("org.postgresql:postgresql:42.7.2")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
+	testImplementation("org.springframework.security:spring-security-test")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
