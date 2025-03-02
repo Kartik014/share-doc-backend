@@ -1,6 +1,8 @@
 package com.sharedoc.shareDoc.controllers
 
 import com.sharedoc.shareDoc.DTO.UserDTO
+import com.sharedoc.shareDoc.model.ApiResponse
+import com.sharedoc.shareDoc.model.User
 import com.sharedoc.shareDoc.services.UserService
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -10,17 +12,19 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/user")
 class AuthController(private val userService: UserService) {
 
-    @PostMapping("/addUser")
-    fun addUser(@RequestBody userDTO: UserDTO): ResponseEntity<String>{
+    @PostMapping("/signUp")
+    fun signUp(@RequestBody userDTO: UserDTO): ResponseEntity<ApiResponse<User>>{
 
         return try {
-            val newUser = userService.addUser(userDTO)
+            val newUser = userService.signUp(userDTO)
             ResponseEntity(newUser, HttpStatus.OK)
+        } catch (e: IllegalArgumentException) {
+            throw IllegalArgumentException("Invalid Request")
         } catch (e: Exception) {
-            ResponseEntity(e.message, HttpStatus.BAD_REQUEST)
+            throw Exception("Internal Server Error")
         }
     }
 }
