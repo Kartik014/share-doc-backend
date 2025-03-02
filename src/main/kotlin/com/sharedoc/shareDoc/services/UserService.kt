@@ -4,12 +4,16 @@ import com.sharedoc.shareDoc.DTO.UserDTO
 import com.sharedoc.shareDoc.model.ApiResponse
 import com.sharedoc.shareDoc.model.User
 import com.sharedoc.shareDoc.repository.AuthRepo
+import com.sharedoc.shareDoc.utils.JwtUtil
+import org.springframework.beans.factory.ObjectProvider
+import org.springframework.security.authentication.AuthenticationManager
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import java.util.UUID
 
 @Service
-class UserService(private val authRepo: AuthRepo, private val passwordEncoder: PasswordEncoder) {
+class UserService(private val authRepo: AuthRepo, private val passwordEncoder: PasswordEncoder, private val jwtUtil: JwtUtil, private val authenticationManagerProvider: ObjectProvider<AuthenticationManager>) {
 
     fun signUp(userDTO: UserDTO): ApiResponse<User> {
         val (id, username, email, password) = userDTO
@@ -30,5 +34,24 @@ class UserService(private val authRepo: AuthRepo, private val passwordEncoder: P
             message = "User ${savedUser.username} created successfully",
             data = savedUser
         )
+    }
+
+    fun logIn(userDTO: UserDTO): ApiResponse<String> {
+        val (id, username, email, password) = userDTO
+
+        val authenticationManager = authenticationManagerProvider.getIfAvailable() ?: throw IllegalStateException("AuthenticationManager not available")
+
+        authenticationManager.authenticate(UsernamePasswordAuthenticationToken(email, password))
+        val user = authRepo.findByEmail(email) ?: throw IllegalArgumentException("User not found")
+        val token = jwtUtil.generateToken(user.username, user.id, user.email)
+        return ApiResponse(
+            status = "success",
+            message = "LogIn Successful",
+            data = token
+        )
+    }
+
+    fun findByEmail(email: String): User? {
+        return authRepo.findByEmail(email)
     }
 }

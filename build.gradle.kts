@@ -38,6 +38,11 @@ dependencies {
 
 	//JSON PARSER
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.0")
+
+	// JWT TOKEN DEPENDENCY
+	implementation("io.jsonwebtoken:jjwt-api:0.12.6")
+	implementation("io.jsonwebtoken:jjwt-impl:0.12.6")
+	implementation("io.jsonwebtoken:jjwt-jackson:0.12.6")
 }
 
 kotlin {
