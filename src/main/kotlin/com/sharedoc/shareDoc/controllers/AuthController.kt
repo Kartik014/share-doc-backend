@@ -3,7 +3,7 @@ package com.sharedoc.shareDoc.controllers
 import com.sharedoc.shareDoc.DTO.UserDTO
 import com.sharedoc.shareDoc.model.ApiResponse
 import com.sharedoc.shareDoc.model.User
-import com.sharedoc.shareDoc.services.UserService
+import com.sharedoc.shareDoc.services.AuthService
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
@@ -12,14 +12,14 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-@RequestMapping("/user")
-class AuthController(private val userService: UserService) {
+@RequestMapping("/auth")
+class AuthController(private val authService: AuthService) {
 
     @PostMapping("/signUp")
     fun signUp(@RequestBody userDTO: UserDTO): ResponseEntity<ApiResponse<User>>{
 
         return try {
-            val newUser = userService.signUp(userDTO)
+            val newUser = authService.signUp(userDTO)
             ResponseEntity(newUser, HttpStatus.OK)
         } catch (e: IllegalArgumentException) {
             throw IllegalArgumentException(e.message)
@@ -32,7 +32,7 @@ class AuthController(private val userService: UserService) {
     fun logIn(@RequestBody userDTO: UserDTO): ResponseEntity<ApiResponse<String>>{
 
         return try {
-            val loggedInUser = userService.logIn(userDTO)
+            val loggedInUser = authService.logIn(userDTO)
             ResponseEntity(loggedInUser, HttpStatus.OK)
         } catch (e: IllegalArgumentException) {
             throw IllegalArgumentException(e.message)

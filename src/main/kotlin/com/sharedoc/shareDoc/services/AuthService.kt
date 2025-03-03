@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service
 import java.util.UUID
 
 @Service
-class UserService(private val authRepo: AuthRepo, private val passwordEncoder: PasswordEncoder, private val jwtUtil: JwtUtil, private val authenticationManagerProvider: ObjectProvider<AuthenticationManager>) {
+class AuthService(private val authRepo: AuthRepo, private val passwordEncoder: PasswordEncoder, private val jwtUtil: JwtUtil, private val authenticationManagerProvider: ObjectProvider<AuthenticationManager>) {
 
     fun signUp(userDTO: UserDTO): ApiResponse<User> {
         val (id, username, email, password) = userDTO
