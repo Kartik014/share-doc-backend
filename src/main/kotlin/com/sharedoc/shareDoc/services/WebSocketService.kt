@@ -8,17 +8,20 @@ import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import org.springframework.web.socket.handler.BinaryWebSocketHandler
-import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.ConcurrentHashMap
 
 
 @Component
 class WebSocketService : BinaryWebSocketHandler() {
 
-    private val sessions = CopyOnWriteArrayList<WebSocketSession>()
+    private val sessions = ConcurrentHashMap<String, WebSocketSession>()
     private val objectMapper = ObjectMapper()
+    var recipientId = ""
 
     override fun afterConnectionEstablished(session: WebSocketSession) {
-        sessions.add(session)
+        val uri = session.uri
+        val userId = uri?.query?.split("userId=")?.getOrNull(1) ?: session.id
+        sessions[userId] = session
         session.textMessageSizeLimit = 512 * 1024 // 512 KB
         session.binaryMessageSizeLimit = 2 * 1024 * 1024 // 2 MB
         println("New connection established: " + session.id)
@@ -30,38 +33,74 @@ class WebSocketService : BinaryWebSocketHandler() {
         val messageData: Map<String, String> = objectMapper.readValue(receivedText)
 
         when (messageData["action"]) {
-            "send_message" -> broadcastMessage("📢 ${messageData["data"] ?: "No message"}")
-            "ping" -> session.sendMessage(TextMessage("✅ Pong!"))
-            "disconnect" -> {
-                session.sendMessage(TextMessage("❌ Disconnecting..."))
-                session.close()
-            }
-            else -> session.sendMessage(TextMessage("⚠️ Unknown action: ${messageData["action"]}"))
+            "send_message" -> sendMessageToUser(session,messageData)
+            "set_recipient" -> setRecipientId(session, messageData)
+            "ping" -> session.sendMessage(TextMessage("Pong"))
+            "disconnect" -> closeSession(session)
+            else -> session.sendMessage(TextMessage("Unknown action: ${messageData["action"]}"))
         }
 
-        // Broadcast message to all connected clients
-//        broadcastMessage("🔁 Broadcast: $receivedText")
+    }
+
+    private fun setRecipientId(session: WebSocketSession, messageData: Map<String, String>) {
+        val id = getUserId(messageData)
+        if(isUserConnected(messageData)){
+            recipientId = id
+            session.sendMessage(TextMessage("$id is set as Recipient"))
+        }
+        else{
+            session.sendMessage(TextMessage("User is offline or not registered"))
+        }
     }
 
     override fun handleBinaryMessage(session: WebSocketSession, message: BinaryMessage) {
         super.handleBinaryMessage(session, message)
-        // Forward the binary message to all connected clients except sender
-        for (client in sessions) {
-            if (client.isOpen && client.id != session.id) {
-                client.sendMessage(message)
+
+        if (recipientId != "") {
+            sessions[recipientId]?.let { it ->
+                if (it.isOpen) {
+                    it.sendMessage(message)
+                }
             }
+        } else {
+            session.sendMessage(TextMessage("No recipient specified for binary message."))
         }
+    }
+
+    fun sendMessageToUser(session: WebSocketSession,messageData: Map<String, String>) {
+        if(isUserConnected(messageData)){
+            getSession(messageData)?.sendMessage(TextMessage(getMessage(messageData)))
+        }
+        else{
+            session.sendMessage(TextMessage("User is offline"))
+        }
+    }
+
+    fun getMessage(messageData: Map<String, String>):String{
+        return messageData["data"] ?: "No message"
+    }
+
+    fun getSession(messageData: Map<String, String>):WebSocketSession?{
+        return sessions[getUserId(messageData)]
+    }
+
+    fun isUserConnected(messageData: Map<String, String>): Boolean {
+        val userId = getUserId(messageData)
+        return sessions.containsKey(userId) && sessions[userId]?.isOpen == true
+    }
+
+    fun getUserId(messageData: Map<String, String>):String{
+        return messageData["to"]?:""
+    }
+
+    fun closeSession(session: WebSocketSession) {
+        session.sendMessage(TextMessage("Disconnecting..."))
+        session.close()
     }
 
     override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
-        sessions.remove(session)
+        val userId = sessions.entries.find { it.value == session }?.key
+        userId?.let { sessions.remove(it) }
     }
 
-    fun broadcastMessage(message: String) {
-        for (session in sessions) {
-            if (session.isOpen) {
-                session.sendMessage(TextMessage(message))
-            }
-        }
-    }
 }
