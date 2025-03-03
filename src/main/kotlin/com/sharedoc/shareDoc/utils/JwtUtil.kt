@@ -1,8 +1,11 @@
 package com.sharedoc.shareDoc.utils
 
+import com.sharedoc.shareDoc.model.User
 import io.jsonwebtoken.*
 import io.jsonwebtoken.security.Keys
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
+import java.nio.charset.StandardCharsets
 import java.util.*
 import javax.crypto.SecretKey
 
@@ -15,6 +18,7 @@ class JwtUtil {
 
         val claims = mapOf(
             "email" to email,
+            "id" to id,
             "username" to username
         )
         return Jwts.builder()
@@ -45,11 +49,28 @@ class JwtUtil {
             .body["email"]
     }
 
+    fun extractIdFromClaim(token: String): Any? {
+        return Jwts.parser()
+            .setSigningKey(secretKey)
+            .build()
+            .parseClaimsJws(token)
+            .body["id"]
+    }
+
     fun extractUsername(token: String): Any? {
         return Jwts.parser()
             .setSigningKey(secretKey)
             .build()
             .parseClaimsJws(token)
             .body["username"]
+    }
+
+    fun getCurrentUserId(): String {
+        val authentication = SecurityContextHolder.getContext().authentication
+        if(authentication != null && authentication.principal is User){
+            return (authentication.principal as User).id
+        } else {
+            throw IllegalArgumentException("User not authenticated")
+        }
     }
 }
