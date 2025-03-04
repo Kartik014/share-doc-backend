@@ -3,6 +3,11 @@ package com.sharedoc.shareDoc.services
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.sharedoc.shareDoc.utils.ExtensionFunctions.string
+import com.sharedoc.shareDoc.utils.WebSocketServiceUtil.getMessage
+import com.sharedoc.shareDoc.utils.WebSocketServiceUtil.getSenderId
+import com.sharedoc.shareDoc.utils.WebSocketServiceUtil.getSession
+import com.sharedoc.shareDoc.utils.WebSocketServiceUtil.getUserId
+import com.sharedoc.shareDoc.utils.WebSocketServiceUtil.isUserConnected
 import com.sharedoc.shareDoc.utils.enums.WebSocketActions.*
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.BinaryMessage
@@ -51,12 +56,16 @@ class WebSocketService : BinaryWebSocketHandler() {
 
     private fun setRecipientId(session: WebSocketSession, messageData: Map<String, String>) {
         val id = getUserId(messageData)
-        if(isUserConnected(messageData)){
+        if(isUserConnected(messageData,sessions)){
             recipientId = id
-            session.sendMessage(TextMessage("$id is set as Recipient"))
+            session.sendMessage(TextMessage(objectMapper.writeValueAsString(
+                mapOf(ACTION.string() to "success")
+            )))
         }
         else{
-            session.sendMessage(TextMessage("User is offline or not registered"))
+            session.sendMessage(TextMessage(objectMapper.writeValueAsString(
+                mapOf(ACTION.string() to "fail")
+            )))
         }
     }
 
@@ -64,13 +73,13 @@ class WebSocketService : BinaryWebSocketHandler() {
         val senderId = getSenderId(session)
         val recipientId = getUserId(messageData)
 
-        if (!isUserConnected(messageData)) {
+        if (!isUserConnected(messageData,sessions)) {
             session.sendMessage(TextMessage("User is offline or not registered"))
             return
         }
 
         pendingRequests.computeIfAbsent(recipientId) { mutableSetOf() }.add(senderId)
-        getSession(messageData)?.sendMessage(
+        getSession(messageData,sessions)?.sendMessage(
             TextMessage(objectMapper.writeValueAsString(
                 mapOf(ACTION.string() to "receive_request", "from" to senderId)
             ))
@@ -83,7 +92,7 @@ class WebSocketService : BinaryWebSocketHandler() {
         val senderId = messageData["from"]
 
         val senderRequests = pendingRequests[recipientId]
-        if (senderId == null || !isUserConnected(senderId)) {
+        if (senderId == null || !isUserConnected(senderId,sessions)) {
             session.sendMessage(TextMessage("Request no longer valid or user is offline"))
             return
         }
@@ -139,39 +148,12 @@ class WebSocketService : BinaryWebSocketHandler() {
     }
 
     fun sendMessageToUser(session: WebSocketSession,messageData: Map<String, String>) {
-        if(isUserConnected(messageData)){
-            getSession(messageData)?.sendMessage(TextMessage(getMessage(messageData)))
+        if(isUserConnected(messageData,sessions)){
+            getSession(messageData,sessions)?.sendMessage(TextMessage(getMessage(messageData)))
         }
         else{
             session.sendMessage(TextMessage("User is offline"))
         }
-    }
-
-    fun getMessage(messageData: Map<String, String>):String{
-        return messageData[DATA.string()] ?: "No message"
-    }
-
-    fun getSession(messageData: Map<String, String>):WebSocketSession?{
-        return sessions[getUserId(messageData)]
-    }
-
-    fun isUserConnected(messageData: Map<String, String>): Boolean {
-        val userId = getUserId(messageData)
-        return sessions.containsKey(userId) && sessions[userId]?.isOpen == true
-    }
-
-    fun isUserConnected(userId: String): Boolean {
-        return sessions.containsKey(userId) && sessions[userId]?.isOpen == true
-    }
-
-    fun getUserId(messageData: Map<String, String>):String{
-        return messageData[TO.string()]?:""
-    }
-
-    fun getSenderId(session: WebSocketSession): String{
-        val uri = session.uri
-        val userId = uri?.query?.split("userId=")?.getOrNull(1) ?: session.id
-        return userId
     }
 
     fun closeSession(session: WebSocketSession) {
