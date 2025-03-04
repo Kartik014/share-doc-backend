@@ -2,6 +2,8 @@ package com.sharedoc.shareDoc.services
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import com.sharedoc.shareDoc.utils.ExtensionFunctions.string
+import com.sharedoc.shareDoc.utils.enums.WebSocketActions.*
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.BinaryMessage
 import org.springframework.web.socket.CloseStatus
@@ -32,12 +34,12 @@ class WebSocketService : BinaryWebSocketHandler() {
         val receivedText = message.payload
         val messageData: Map<String, String> = objectMapper.readValue(receivedText)
 
-        when (messageData["action"]) {
-            "send_message" -> sendMessageToUser(session,messageData)
-            "set_recipient" -> setRecipientId(session, messageData)
-            "ping" -> session.sendMessage(TextMessage("Pong"))
-            "disconnect" -> closeSession(session)
-            else -> session.sendMessage(TextMessage("Unknown action: ${messageData["action"]}"))
+        when (messageData[ACTION.string()]) {
+            SEND_MESSAGE.string() -> sendMessageToUser(session,messageData)
+            SET_RECIPIENT.string() -> setRecipientId(session, messageData)
+            PING.string() -> session.sendMessage(TextMessage("Pong"))
+            DISCONNECT.string() -> closeSession(session)
+            else -> session.sendMessage(TextMessage("Unknown action: ${messageData[ACTION.string()]}"))
         }
 
     }
@@ -57,7 +59,7 @@ class WebSocketService : BinaryWebSocketHandler() {
         super.handleBinaryMessage(session, message)
 
         if (recipientId != "") {
-            sessions[recipientId]?.let { it ->
+            sessions[recipientId]?.let {
                 if (it.isOpen) {
                     it.sendMessage(message)
                 }
@@ -77,7 +79,7 @@ class WebSocketService : BinaryWebSocketHandler() {
     }
 
     fun getMessage(messageData: Map<String, String>):String{
-        return messageData["data"] ?: "No message"
+        return messageData[DATA.string()] ?: "No message"
     }
 
     fun getSession(messageData: Map<String, String>):WebSocketSession?{
@@ -90,7 +92,7 @@ class WebSocketService : BinaryWebSocketHandler() {
     }
 
     fun getUserId(messageData: Map<String, String>):String{
-        return messageData["to"]?:""
+        return messageData[TO.string()]?:""
     }
 
     fun closeSession(session: WebSocketSession) {
