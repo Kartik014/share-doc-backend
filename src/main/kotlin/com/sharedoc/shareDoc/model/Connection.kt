@@ -1,5 +1,6 @@
 package com.sharedoc.shareDoc.model
 
+import com.sharedoc.shareDoc.utils.ExtensionFunctions.string
 import com.sharedoc.shareDoc.utils.enums.ConnectionStatus
 import jakarta.persistence.*
 import org.hibernate.annotations.CreationTimestamp
@@ -20,7 +21,7 @@ data class Connection (
     val receiverid: String = "",
 
     @Column(nullable = false, unique = false)
-    var status: String = ConnectionStatus.PENDING.name,
+    var status: String = ConnectionStatus.PENDING.string(),
 
     @CreationTimestamp
     @Column(nullable = false, unique = false)

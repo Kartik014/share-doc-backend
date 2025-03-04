@@ -6,11 +6,7 @@ import com.sharedoc.shareDoc.model.Connection
 import com.sharedoc.shareDoc.services.ConnectionService
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import java.util.*
 
 @RestController
@@ -61,6 +57,72 @@ class ConnectionController(private val connectionService: ConnectionService) {
             throw IllegalArgumentException(e.message)
         } catch (e: Exception) {
             throw Exception("Internal Server Error")
+        }
+    }
+
+    @PatchMapping("/request/accept/userid={userid}")
+    fun acceptIncomingRequest(@PathVariable userid: String, @RequestBody connectionDTO: ConnectionDTO): ResponseEntity<ApiResponse<Connection>> {
+
+        val status = connectionDTO.status
+        val connectionID = connectionDTO.connectionID
+        val newConnectionDTO = ConnectionDTO(
+            senderID = userid,
+            receiverID = "",
+            connectionID = connectionID,
+            status = status
+        )
+
+        return try {
+            val acceptedRequest = connectionService.acceptIncomingRequest(newConnectionDTO)
+            ResponseEntity(acceptedRequest, HttpStatus.OK)
+        } catch (e: IllegalArgumentException) {
+            throw IllegalArgumentException(e.message)
+        } catch (e: Exception) {
+            throw Exception("Internal Server Error")
+        }
+    }
+
+    @PatchMapping("/request/reject/userid={userid}")
+    fun rejectIncomingRequest(@PathVariable userid: String, @RequestBody connectionDTO: ConnectionDTO): ResponseEntity<ApiResponse<Connection>> {
+
+        val status = connectionDTO.status
+        val connectionID = connectionDTO.connectionID
+        val newConnectionDTO = ConnectionDTO(
+            senderID = userid,
+            receiverID = "",
+            connectionID = connectionID,
+            status = status
+        )
+
+        return try {
+            val rejectedRequest = connectionService.rejectIncomingRequest(newConnectionDTO)
+            ResponseEntity(rejectedRequest, HttpStatus.OK)
+        } catch (e: IllegalArgumentException) {
+            throw IllegalArgumentException(e.message)
+        } catch (e: Exception) {
+            throw Exception("Internal server error")
+        }
+    }
+
+    @PatchMapping("/request/cancel/userid={userid}")
+    fun cancelSentConnectionRequest(@PathVariable userid: String, @RequestBody connectionDTO: ConnectionDTO): ResponseEntity<ApiResponse<Connection>> {
+
+        val status = connectionDTO.status
+        val connectionID = connectionDTO.connectionID
+        val newConnectionDTO = ConnectionDTO(
+            senderID = userid,
+            receiverID = "",
+            connectionID = connectionID,
+            status = status
+        )
+
+        return try {
+            val canceledRequest = connectionService.cancelSentConnectionRequest(newConnectionDTO)
+            ResponseEntity(canceledRequest, HttpStatus.OK)
+        } catch (e: IllegalArgumentException) {
+            throw IllegalArgumentException(e.message)
+        } catch (e: Exception) {
+            throw Exception("Internal server error")
         }
     }
 }
