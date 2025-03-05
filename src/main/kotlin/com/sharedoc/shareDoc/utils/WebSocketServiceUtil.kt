@@ -13,11 +13,11 @@ object WebSocketServiceUtil {
     }
 
     fun getSession(messageData: Map<String, String>,sessions :ConcurrentHashMap<String, WebSocketSession>): WebSocketSession?{
-        return sessions[getUserId(messageData)]
+        return sessions[getRecipientId(messageData)]
     }
 
     fun isUserConnected(messageData: Map<String, String>,sessions :ConcurrentHashMap<String, WebSocketSession>): Boolean {
-        val userId = getUserId(messageData)
+        val userId = getRecipientId(messageData)
         return sessions.containsKey(userId) && sessions[userId]?.isOpen == true
     }
 
@@ -25,7 +25,7 @@ object WebSocketServiceUtil {
         return sessions.containsKey(userId) && sessions[userId]?.isOpen == true
     }
 
-    fun getUserId(messageData: Map<String, String>):String{
+    fun getRecipientId(messageData: Map<String, String>):String{
         return messageData[TO.string()]?:""
     }
 

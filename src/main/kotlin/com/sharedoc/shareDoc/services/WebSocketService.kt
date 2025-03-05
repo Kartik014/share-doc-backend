@@ -4,9 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.sharedoc.shareDoc.utils.ExtensionFunctions.string
 import com.sharedoc.shareDoc.utils.WebSocketServiceUtil.getMessage
+import com.sharedoc.shareDoc.utils.WebSocketServiceUtil.getRecipientId
 import com.sharedoc.shareDoc.utils.WebSocketServiceUtil.getSenderId
 import com.sharedoc.shareDoc.utils.WebSocketServiceUtil.getSession
-import com.sharedoc.shareDoc.utils.WebSocketServiceUtil.getUserId
 import com.sharedoc.shareDoc.utils.WebSocketServiceUtil.isUserConnected
 import com.sharedoc.shareDoc.utils.enums.WebSocketActions.*
 import org.springframework.stereotype.Component
@@ -25,7 +25,6 @@ class WebSocketService : BinaryWebSocketHandler() {
     private val pendingRequests = ConcurrentHashMap<String, MutableSet<String>>()
     private val approvedConnections = ConcurrentHashMap<String, MutableSet<String>>()
     private val objectMapper = ObjectMapper()
-    var recipientId = ""
 
     override fun afterConnectionEstablished(session: WebSocketSession) {
         val uri = session.uri
@@ -54,24 +53,9 @@ class WebSocketService : BinaryWebSocketHandler() {
 
     }
 
-    private fun setRecipientId(session: WebSocketSession, messageData: Map<String, String>) {
-        val id = getUserId(messageData)
-        if(isUserConnected(messageData,sessions)){
-            recipientId = id
-            session.sendMessage(TextMessage(objectMapper.writeValueAsString(
-                mapOf(ACTION.string() to "success")
-            )))
-        }
-        else{
-            session.sendMessage(TextMessage(objectMapper.writeValueAsString(
-                mapOf(ACTION.string() to "fail")
-            )))
-        }
-    }
-
     private fun sendFileRequest(session: WebSocketSession, messageData: Map<String, String>) {
         val senderId = getSenderId(session)
-        val recipientId = getUserId(messageData)
+        val recipientId = getRecipientId(messageData)
 
         if (!isUserConnected(messageData,sessions)) {
             session.sendMessage(TextMessage("User is offline or not registered"))
@@ -89,7 +73,7 @@ class WebSocketService : BinaryWebSocketHandler() {
 
     private fun acceptFileRequest(session: WebSocketSession, messageData: Map<String, String>) {
         val recipientId = getSenderId(session)
-        val senderId = messageData["from"]
+        val senderId = messageData[FROM.string()]
 
         val senderRequests = pendingRequests[recipientId]
         if (senderId == null || !isUserConnected(senderId,sessions)) {
@@ -115,7 +99,7 @@ class WebSocketService : BinaryWebSocketHandler() {
 
     private fun rejectFileRequest(session: WebSocketSession, messageData: Map<String, String>) {
         val recipientId = getSenderId(session)
-        val senderId = messageData["from"]
+        val senderId = messageData[FROM.string()]
 
         val senderRequests = pendingRequests[recipientId]
         if (senderId != null) {
@@ -133,17 +117,35 @@ class WebSocketService : BinaryWebSocketHandler() {
         }
     }
 
+    private fun setRecipientId(session: WebSocketSession, messageData: Map<String, String>) {
+        val id = getRecipientId(messageData)
+        if(isUserConnected(messageData,sessions)){
+            session.attributes[RECIPIENT_ID.string()] = id
+            session.sendMessage(TextMessage(objectMapper.writeValueAsString(
+                mapOf(ACTION.string() to "send_image")
+            )))
+            getSession(messageData,sessions)?.sendMessage(TextMessage(objectMapper.writeValueAsString(
+                mapOf(ACTION.string() to "receive_image","fileSize" to messageData["fileSize"])
+            )))
+        }
+        else{
+            session.sendMessage(TextMessage(objectMapper.writeValueAsString(
+                mapOf(ACTION.string() to "fail")
+            )))
+        }
+    }
+
     override fun handleBinaryMessage(session: WebSocketSession, message: BinaryMessage) {
         super.handleBinaryMessage(session, message)
-
-        if (recipientId != "") {
+        val recipientId = session.attributes[RECIPIENT_ID.string()] as? String ?: ""
+        if (recipientId != "" && isUserConnected(recipientId,sessions) && sessions[recipientId] != null) {
             sessions[recipientId]?.let {
                 if (it.isOpen) {
                     it.sendMessage(message)
                 }
             }
         } else {
-            session.sendMessage(TextMessage("No recipient specified for binary message."))
+            session.sendMessage(TextMessage("No recipient found for binary message."))
         }
     }
 
