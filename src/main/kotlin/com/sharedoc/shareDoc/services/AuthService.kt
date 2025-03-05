@@ -1,33 +1,25 @@
 package com.sharedoc.shareDoc.services
 
 import com.sharedoc.shareDoc.DTO.UserDTO
+import com.sharedoc.shareDoc.factory.AuthenticatorFactory
+import com.sharedoc.shareDoc.factory.UserFactory
+import com.sharedoc.shareDoc.interfaces.AuthServiceInterface
 import com.sharedoc.shareDoc.model.ApiResponse
 import com.sharedoc.shareDoc.model.User
 import com.sharedoc.shareDoc.repository.AuthRepo
 import com.sharedoc.shareDoc.utils.JwtUtil
-import org.springframework.beans.factory.ObjectProvider
-import org.springframework.security.authentication.AuthenticationManager
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
-import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
-import java.util.UUID
 
 @Service
-class AuthService(private val authRepo: AuthRepo, private val passwordEncoder: PasswordEncoder, private val jwtUtil: JwtUtil, private val authenticationManagerProvider: ObjectProvider<AuthenticationManager>) {
+class AuthService(private val authRepo: AuthRepo, private val userFactory: UserFactory, private val jwtUtil: JwtUtil, private val authenticatorFactory: AuthenticatorFactory): AuthServiceInterface {
 
-    fun signUp(userDTO: UserDTO): ApiResponse<User> {
-        val (id, username, email, password) = userDTO
+    override fun signUp(userDTO: UserDTO): ApiResponse<User> {
+        val email = userDTO.email
 
         if(authRepo.findByEmail(email) != null){
             throw IllegalArgumentException("Email already registered")
         }
-        val hashedPassword = passwordEncoder.encode(password)
-        val newUser = User(
-            id = id?: UUID.randomUUID().toString(),
-            username = username,
-            email = email,
-            password = hashedPassword
-        )
+        val newUser = userFactory.createUser(userDTO)
         val savedUser: User = authRepo.save(newUser)
         return ApiResponse(
             status = "success",
@@ -36,12 +28,11 @@ class AuthService(private val authRepo: AuthRepo, private val passwordEncoder: P
         )
     }
 
-    fun logIn(userDTO: UserDTO): ApiResponse<String> {
-        val (id, username, email, password) = userDTO
+    override fun logIn(userDTO: UserDTO): ApiResponse<String> {
+        val email = userDTO.email
+        val password = userDTO.password
 
-        val authenticationManager = authenticationManagerProvider.getIfAvailable() ?: throw IllegalStateException("AuthenticationManager not available")
-
-        authenticationManager.authenticate(UsernamePasswordAuthenticationToken(email, password))
+        authenticatorFactory.authenticate(email, password)
         val user = authRepo.findByEmail(email) ?: throw IllegalArgumentException("User not found")
         val token = jwtUtil.generateToken(user.username, user.id, user.email)
         return ApiResponse(
@@ -51,7 +42,7 @@ class AuthService(private val authRepo: AuthRepo, private val passwordEncoder: P
         )
     }
 
-    fun findByEmail(email: String): User? {
+    override fun findByEmail(email: String): User? {
         return authRepo.findByEmail(email)
     }
 }

@@ -1,12 +1,12 @@
 package com.sharedoc.shareDoc.utils
 
-import com.sharedoc.shareDoc.services.AuthService
+import com.sharedoc.shareDoc.interfaces.AuthServiceInterface
 import org.springframework.security.authentication.AuthenticationProvider
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
 import org.springframework.security.crypto.password.PasswordEncoder
 
-class CustomAuthenticationProvider(private val authService: AuthService, private val passwordEncoder: PasswordEncoder): AuthenticationProvider {
+class CustomAuthenticationProvider(private val authService: AuthServiceInterface, private val passwordEncoder: PasswordEncoder): AuthenticationProvider {
     override fun authenticate(authentication: Authentication?): Authentication {
         val email = authentication!!.name
         val password = authentication.credentials.toString()
