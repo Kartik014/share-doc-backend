@@ -1,9 +1,9 @@
 package com.sharedoc.shareDoc.controllers
 
 import com.sharedoc.shareDoc.DTO.ConnectionDTO
+import com.sharedoc.shareDoc.interfaces.ConnectionServiceInterface
 import com.sharedoc.shareDoc.model.ApiResponse
 import com.sharedoc.shareDoc.model.Connection
-import com.sharedoc.shareDoc.services.ConnectionService
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -11,7 +11,7 @@ import java.util.*
 
 @RestController
 @RequestMapping("/connection")
-class ConnectionController(private val connectionService: ConnectionService) {
+class ConnectionController(private val connectionService: ConnectionServiceInterface) {
 
     @GetMapping("/getconnects")
     fun getConnections(): ResponseEntity<ApiResponse<List<Connection>>>{
@@ -104,7 +104,7 @@ class ConnectionController(private val connectionService: ConnectionService) {
         }
     }
 
-    @PatchMapping("/request/cancel/userid={userid}")
+    @PatchMapping("/userid={userid}/request/cancel")
     fun cancelSentConnectionRequest(@PathVariable userid: String, @RequestBody connectionDTO: ConnectionDTO): ResponseEntity<ApiResponse<Connection>> {
 
         val status = connectionDTO.status
